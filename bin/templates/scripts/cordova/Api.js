@@ -217,6 +217,13 @@ Api.prototype.addPlugin = function (plugin, installOptions) {
 
     return PluginManager.get(this.platform, this.locations, xcodeproj)
         .addPlugin(plugin, installOptions)
+        .then(function() {
+            if (plugin.getFrameworks(this.platform).length === 0) return;
+                console.log('Looking into adding pods since the plugin contained <framework>');
+                //require script to run pod init and pod install
+                //pods.json should exist now if framework type podspec was in plugin.xml
+ 
+        }.bind(this))
         // CB-11022 return non-falsy value to indicate
         // that there is no need to run prepare after
         .thenResolve(true);
@@ -240,6 +247,15 @@ Api.prototype.removePlugin = function (plugin, uninstallOptions) {
     var xcodeproj = projectFile.parse(this.locations);
     return PluginManager.get(this.platform, this.locations, xcodeproj)
         .removePlugin(plugin, uninstallOptions)
+        .then(function() {
+            if (plugin.getFrameworks(this.platform).length === 0) return;
+                console.log('Looking into removing pods since the plugin contained <framework>');
+                //require script to run pod remove
+                //pods.json might not exist (if not pods were removed). 
+                //the pod will already be removed from pods.json at this stage
+                //need to check podfile and see if a pod exists in podfile that doesn't exist in pods.json. If so, remove it.
+
+        }.bind(this))
         // CB-11022 return non-falsy value to indicate
         // that there is no need to run prepare after
         .thenResolve(true);

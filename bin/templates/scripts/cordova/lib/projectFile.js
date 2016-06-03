@@ -57,6 +57,12 @@ function parseProjectFile(locations) {
         frameworks = require(frameworks_file);
     } catch (e) { }
 
+    var pods_file = path.join(project_dir, 'pods.json');
+    var pods = {};
+    try {
+        pods = require(pods_file);
+    } catch (e) { }
+
     var xcode_dir = path.dirname(plist_file);
     var pluginsDir = path.resolve(xcode_dir, 'Plugins');
     var resourcesDir = path.resolve(xcode_dir, 'Resources');
@@ -72,12 +78,20 @@ function parseProjectFile(locations) {
         www: path.join(project_dir, 'www'),
         write: function () {
             fs.writeFileSync(pbxPath, xcodeproj.writeSync());
+            //write out frameworks.json
             if (Object.keys(this.frameworks).length === 0){
                 // If there is no framework references remain in the project, just remove this file
                 shell.rm('-rf', frameworks_file);
                 return;
             }
             fs.writeFileSync(frameworks_file, JSON.stringify(this.frameworks, null, 4));
+            //write out pods.json
+            if (Object.keys(this.pods).length === 0){
+                // If there is no pod references remain in the project, just remove this file
+                shell.rm('-rf', pods_file);
+                return;
+            }
+            fs.writeFileSync(pods_file, JSON.stringify(this.pods, null, 4));
         },
         getPackageName: function() {
             return plist.parse(fs.readFileSync(plist_file, 'utf8')).CFBundleIdentifier;
@@ -88,7 +102,8 @@ function parseProjectFile(locations) {
         getUninstaller: function (name) {
             return pluginHandlers.getUninstaller(name);
         },
-        frameworks: frameworks
+        frameworks: frameworks,
+        pods: pods
     };
     return cachedProjectFiles[project_dir];
 }

@@ -68,11 +68,22 @@ var handlers = {
                 custom = obj.custom;
 
             if (!custom) {
+                
                 var keepFrameworks = keep_these_frameworks;
 
-                if (keepFrameworks.indexOf(src) < 0) {
-                    project.xcode.addFramework(src, {weak: obj.weak});
-                    project.frameworks[src] = (project.frameworks[src] || 0) + 1;
+                if (keepFrameworks.indexOf(src) < 0) { 
+                    if (obj.type === "podspec") {
+                        project.pods[src] = {"type": obj.type, "spec": (obj.spec || undefined)};
+                        // add a count incase multiple plugins depend on it.
+                        if (project.pods[src].count) {
+                            project.pods[src].count = project.pods[src].count + 1;
+                        } else {
+                            project.pods[src].count = 1;
+                        }
+                    } else {
+                        project.frameworks[src] = (project.frameworks[src] || 0) + 1;
+                        project.xcode.addFramework(src, {weak: obj.weak});
+                    }
                 }
                 return;
             }
@@ -97,17 +108,28 @@ var handlers = {
                 var keepFrameworks = keep_these_frameworks;
 
                 if (keepFrameworks.indexOf(src) < 0) {
-                    project.frameworks[src] -= (project.frameworks[src] || 1) - 1;
-                    if (project.frameworks[src] < 1) {
-                        // Only remove non-custom framework from xcode project
-                        // if there is no references remains
-                        project.xcode.removeFramework(src);
-                        delete project.frameworks[src];
+                    if (obj.type === "podspec") {
+                        if(project.pods[src]) {
+                            if((project.pods[src].count - 1) > 0) {
+                                project.pods[src].count = project.pods[src].count - 1;
+                            } else {
+                                delete project.pods[src];
+                            }
+                        }
+                    } else {
+                        project.frameworks[src] -= (project.frameworks[src] || 1) - 1;
+                        if (project.frameworks[src] < 1) {
+                            // Only remove non-custom framework from xcode project
+                            // if there is no references remains
+                            project.xcode.removeFramework(src);
+                            console.log("removing " + src);
+                            delete project.frameworks[src];
+                        }
                     }
                 }
                 return;
             }
-
+            
             var targetDir = fixPathSep(path.resolve(project.plugins_dir, plugin.id, path.basename(src))),
                 pbxFile = project.xcode.removeFramework(targetDir, {customFramework: true});
             if (pbxFile) {
